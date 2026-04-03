@@ -41,7 +41,7 @@ def populate_initial_units():
         #poblado de producto y receta de prueba
         prod_pastel = db.query(Product).filter(Product.name == "Pastel Prueba").first()
         if not prod_pastel:
-            prod_pastel = Product(name="Pastel Prueba", description="Un pastel de prueba para la receta", price=15.0)
+            prod_pastel = Product(name="Pastel Prueba", description="Un pastel de prueba para la receta", price=15)
             db.add(prod_pastel)
             db.commit()
             db.refresh(prod_pastel)
