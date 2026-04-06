@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 
 
@@ -15,13 +15,11 @@ class ProductCreate(ProductBase):
 class ProductRead(ProductBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductWithRecipe(ProductRead):
     """Producto con sus recetas asociadas"""
     recipe_items: List[dict] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
