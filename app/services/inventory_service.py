@@ -32,3 +32,22 @@ class InventoryService:
         #Conversion de unidades
         quantity_in_inventory_unit = convert( value=required_quantity, from_unit=recipe_unit, to_unit=ingredient.unit)
         return ingredient.stock_disponible >= quantity_in_inventory_unit
+
+    def calculate_requirement(self, ingredient: Ingredient, recipe_unit: Unit, required_quantity: float) -> dict:
+        """Calcula cantidades requeridas/faltantes en la unidad del inventario."""
+        required_in_inventory_unit = convert(
+            value=required_quantity,
+            from_unit=recipe_unit,
+            to_unit=ingredient.unit,
+        )
+        missing_quantity = max(0.0, required_in_inventory_unit - ingredient.stock_disponible)
+
+        return {
+            "required_in_recipe_unit": required_quantity,
+            "recipe_unit": recipe_unit.abbreviation,
+            "required_in_inventory_unit": required_in_inventory_unit,
+            "inventory_unit": ingredient.unit.abbreviation,
+            "available_in_inventory_unit": ingredient.stock_disponible,
+            "missing_in_inventory_unit": missing_quantity,
+            "is_available": missing_quantity == 0,
+        }
