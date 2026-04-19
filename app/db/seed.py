@@ -1,58 +1,143 @@
 from app.db.session import SessionLocal
 from app.models.ingredient import Ingredient
+from app.models.product import Product
 from app.models.recipe_item import RecipeItem
 from app.models.unit import Unit
-from app.models.product import Product
 
-def populate_initial_units():
+
+def _get_or_create_unit(db, name: str, abbreviation: str, base_factor: float) -> Unit:
+    unit = db.query(Unit).filter(Unit.abbreviation == abbreviation).first()
+    if unit:
+        return unit
+    unit = Unit(name=name, abbreviation=abbreviation, base_factor=base_factor)
+    db.add(unit)
+    db.flush()
+    return unit
+
+
+def _get_or_create_ingredient(
+    db,
+    name: str,
+    unit_id: int,
+    stock_fisico: float,
+    stock_reservado: float,
+    stock_minimo: float,
+) -> Ingredient:
+    ingredient = db.query(Ingredient).filter(Ingredient.name == name).first()
+    if ingredient:
+        ingredient.unit_id = unit_id
+        ingredient.stock_fisico = stock_fisico
+        ingredient.stock_reservado = stock_reservado
+        ingredient.stock_minimo = stock_minimo
+        return ingredient
+
+    ingredient = Ingredient(
+        name=name,
+        unit_id=unit_id,
+        stock_fisico=stock_fisico,
+        stock_reservado=stock_reservado,
+        stock_minimo=stock_minimo,
+    )
+    db.add(ingredient)
+    db.flush()
+    return ingredient
+
+
+def _get_or_create_product(db, name: str, description: str, price: int) -> Product:
+    product = db.query(Product).filter(Product.name == name).first()
+    if product:
+        product.description = description
+        product.price = price
+        return product
+
+    product = Product(name=name, description=description, price=price)
+    db.add(product)
+    db.flush()
+    return product
+
+
+def _upsert_recipe_item(
+    db,
+    product_id: int,
+    ingredient_id: int,
+    unit_id: int,
+    quantity: float,
+) -> RecipeItem:
+    recipe_item = (
+        db.query(RecipeItem)
+        .filter(
+            RecipeItem.product_id == product_id,
+            RecipeItem.ingredient_id == ingredient_id,
+        )
+        .first()
+    )
+    if recipe_item:
+        recipe_item.unit_id = unit_id
+        recipe_item.quantity = quantity
+        return recipe_item
+
+    recipe_item = RecipeItem(
+        product_id=product_id,
+        ingredient_id=ingredient_id,
+        unit_id=unit_id,
+        quantity=quantity,
+    )
+    db.add(recipe_item)
+    db.flush()
+    return recipe_item
+
+
+def populate_seed_data() -> None:
     with SessionLocal() as db:
-        units_to_create = [
-            {"name": "Gramo", "abbreviation": "g", "base_factor": 1.0},
-            {"name": "Kilogramo", "abbreviation": "kg", "base_factor": 1000.0},
-            {"name": "Mililitro", "abbreviation": "ml", "base_factor": 1.0},
-            {"name": "Litro", "abbreviation": "l", "base_factor": 1000.0},
-            {"name": "Unidad", "abbreviation": "u", "base_factor": 1.0},
-        ]
+        # Units
+        unit_g = _get_or_create_unit(db, "Gramo", "g", 1.0)
+        unit_kg = _get_or_create_unit(db, "Kilogramo", "kg", 1000.0)
+        unit_ml = _get_or_create_unit(db, "Mililitro", "ml", 1.0)
+        unit_l = _get_or_create_unit(db, "Litro", "l", 1000.0)
+        unit_u = _get_or_create_unit(db, "Unidad", "u", 1.0)
 
-        for unit_data in units_to_create:
-            existing = db.query(Unit).filter(Unit.abbreviation == unit_data["abbreviation"]).first()
-            if not existing:
-                new_unit = Unit(**unit_data)
-                db.add(new_unit)
-        
+        # Ingredients
+        ing_harina = _get_or_create_ingredient(
+            db, "Harina", unit_g.id, stock_fisico=5000.0, stock_reservado=0.0, stock_minimo=1000.0
+        )
+        ing_huevos = _get_or_create_ingredient(
+            db, "Huevos", unit_u.id, stock_fisico=30.0, stock_reservado=0.0, stock_minimo=12.0
+        )
+        ing_leche = _get_or_create_ingredient(
+            db, "Leche", unit_ml.id, stock_fisico=10000.0, stock_reservado=0.0, stock_minimo=2000.0
+        )
+        ing_azucar = _get_or_create_ingredient(
+            db, "Azucar", unit_g.id, stock_fisico=4000.0, stock_reservado=0.0, stock_minimo=800.0
+        )
+
+        # Products
+        prod_pastel = _get_or_create_product(
+            db,
+            name="Pastel Prueba",
+            description="Producto base para probar check/confirm",
+            price=15000,
+        )
+        prod_panqueques = _get_or_create_product(
+            db,
+            name="Panqueques",
+            description="Producto alternativo para pruebas de catalogo",
+            price=9000,
+        )
+
+        # Recipes (intentionally mixed units to test unit conversion)
+        _upsert_recipe_item(db, prod_pastel.id, ing_harina.id, unit_kg.id, 0.5)   # 500 g
+        _upsert_recipe_item(db, prod_pastel.id, ing_huevos.id, unit_u.id, 3.0)    # 3 unidades
+        _upsert_recipe_item(db, prod_pastel.id, ing_leche.id, unit_l.id, 0.3)     # 300 ml
+        _upsert_recipe_item(db, prod_pastel.id, ing_azucar.id, unit_g.id, 120.0)  # 120 g
+
+        _upsert_recipe_item(db, prod_panqueques.id, ing_harina.id, unit_g.id, 200.0)
+        _upsert_recipe_item(db, prod_panqueques.id, ing_huevos.id, unit_u.id, 2.0)
+        _upsert_recipe_item(db, prod_panqueques.id, ing_leche.id, unit_ml.id, 350.0)
+
         db.commit()
 
-        #Poblado ingredientes de prueba
-        unit_g = db.query(Unit).filter(Unit.abbreviation == "g").first()
-        unit_u = db.query(Unit).filter(Unit.abbreviation == "u").first()
-
-        ing_harina = db.query(Ingredient).filter(Ingredient.name == "Harina").first()
-        if not ing_harina and unit_g:
-            ing_harina = Ingredient(name="Harina", unit_id=unit_g.id, stock_fisico=5000, stock_reservado=0, stock_minimo=1000)
-            db.add(ing_harina)
-
-        ing_huevos = db.query(Ingredient).filter(Ingredient.name == "Huevos").first()
-        if not ing_huevos and unit_u:
-            ing_huevos = Ingredient(name="Huevos", unit_id=unit_u.id, stock_fisico=30, stock_reservado=0, stock_minimo=12)
-            db.add(ing_huevos)
-
-        db.commit()
-
-        #poblado de producto y receta de prueba
-        prod_pastel = db.query(Product).filter(Product.name == "Pastel Prueba").first()
-        if not prod_pastel:
-            prod_pastel = Product(name="Pastel Prueba", description="Un pastel de prueba para la receta", price=15)
-            db.add(prod_pastel)
-            db.commit()
-            db.refresh(prod_pastel)
-
-            #ejemplo receta de 500gramos harina y 3 huevos
-            if ing_harina and ing_huevos:
-                db.add(RecipeItem(product_id=prod_pastel.id, ingredient_id=ing_harina.id, quantity=500))
-                db.add(RecipeItem(product_id=prod_pastel.id, ingredient_id=ing_huevos.id, quantity=3))
-                db.commit()
 
 if __name__ == "__main__":
     print("Iniciando poblado de datos...")
-    populate_initial_units()
-    print("Unidades registradas en la base de datos exitosamente.")
+    populate_seed_data()
+    print("Seed completado: unidades, ingredientes, productos y recetas listos.")

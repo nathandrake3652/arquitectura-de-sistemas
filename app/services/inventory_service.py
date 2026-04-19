@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.ingredient import Ingredient
+from app.models.stock_movement import StockMovement
 from app.models.unit import Unit
 from app.utils.unit_converter import convert
 
@@ -50,4 +51,46 @@ class InventoryService:
             "available_in_inventory_unit": ingredient.stock_disponible,
             "missing_in_inventory_unit": missing_quantity,
             "is_available": missing_quantity == 0,
+        }
+
+    def adjust_stock(self, ingredient_id: int, tipo: str, cantidad: float, motivo: str) -> dict:
+        ingredient = (
+            self.db.query(Ingredient)
+            .filter(Ingredient.id == ingredient_id)
+            .with_for_update()
+            .first()
+        )
+        if not ingredient:
+            raise ValueError(f"Ingrediente con id {ingredient_id} no encontrado")
+
+        if tipo == "entrada_compra":
+            ingredient.stock_fisico += cantidad
+        elif tipo == "salida_merma":
+            if ingredient.stock_fisico - cantidad < ingredient.stock_reservado:
+                raise ValueError("No hay stock disponible suficiente para registrar merma")
+            ingredient.stock_fisico -= cantidad
+        else:
+            raise ValueError("Tipo de ajuste no soportado")
+
+        movement = StockMovement(
+            ingredient_id=ingredient.id,
+            cantidad=cantidad,
+            tipo=tipo,
+            motivo=motivo,
+        )
+        self.db.add(movement)
+        self.db.commit()
+        self.db.refresh(ingredient)
+        self.db.refresh(movement)
+
+        return {
+            "ingredient_id": ingredient.id,
+            "ingredient_name": ingredient.name,
+            "tipo": movement.tipo,
+            "cantidad": movement.cantidad,
+            "motivo": movement.motivo,
+            "fecha": movement.fecha.isoformat(),
+            "stock_fisico": ingredient.stock_fisico,
+            "stock_reservado": ingredient.stock_reservado,
+            "stock_disponible": ingredient.stock_disponible,
         }

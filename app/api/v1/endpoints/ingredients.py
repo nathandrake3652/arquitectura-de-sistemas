@@ -9,6 +9,8 @@ from app.crud.ingredient import (
 )
 from app.db.session import get_db
 from app.schemas.ingredient import IngredientCreate, IngredientRead
+from app.schemas.order import InventoryAdjustmentRequest
+from app.services.inventory_service import InventoryService
 
 router = APIRouter()
 
@@ -38,3 +40,26 @@ def get_ingredient_detail(ingredient_id: int, db: Session = Depends(get_db)):
             detail=f"Ingredient with id {ingredient_id} not found",
         )
     return ingredient
+
+
+@router.post("/{ingredient_id}/adjustments", status_code=status.HTTP_200_OK)
+def adjust_ingredient_stock(
+    ingredient_id: int,
+    payload: InventoryAdjustmentRequest,
+    db: Session = Depends(get_db),
+):
+    service = InventoryService(db)
+    try:
+        return service.adjust_stock(
+            ingredient_id=ingredient_id,
+            tipo=payload.tipo,
+            cantidad=payload.cantidad,
+            motivo=payload.motivo,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        status_code = status.HTTP_404_NOT_FOUND if "no encontrado" in message.lower() else status.HTTP_409_CONFLICT
+        raise HTTPException(
+            status_code=status_code,
+            detail=message,
+        ) from exc
