@@ -9,7 +9,12 @@ from app.services.order_service import InsufficientStockError, OrderService
 router = APIRouter()
 
 
-@router.post("/check", status_code=status.HTTP_200_OK)
+@router.post("/check", status_code=status.HTTP_200_OK, tags=["Gestion de Pedidos"],
+             responses={
+                 400: {"description": "Stock Insuficiente (DomainException)"},
+                 404: {"description": "Producto no encontrado"}
+             },
+             summary="Verificar requisitos de un pedido",)
 def check_order(payload: OrderCheckRequest, db: Session = Depends(get_db)):
     service = OrderService(db)
     try:

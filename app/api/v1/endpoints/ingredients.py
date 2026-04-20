@@ -12,7 +12,7 @@ from app.schemas.ingredient import IngredientCreate, IngredientRead
 from app.schemas.order import InventoryAdjustmentRequest
 from app.services.inventory_service import InventoryService
 
-router = APIRouter()
+router = APIRouter(tags=["Gestión de Inventario e Ingredientes"])
 
 
 @router.get("", response_model=list[IngredientRead])

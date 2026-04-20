@@ -42,7 +42,7 @@ def test_finish_order_consumes_physical_and_releases_reserved(client, db_session
 
     finish_response = client.post(
         "/api/v1/finish",
-        json={"product_id": cake.id, "order_quantity": 2, "status": "cocinado"},
+        json={"product_id": cake.id, "order_quantity": 2, "status": "preparado"},
     )
 
     assert finish_response.status_code == 200
