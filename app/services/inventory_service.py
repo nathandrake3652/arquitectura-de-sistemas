@@ -83,6 +83,9 @@ class InventoryService:
         self.db.refresh(ingredient)
         self.db.refresh(movement)
 
+        #Evaluar el estado del stock disponible para alerta
+        alert_triggered = ingredient.stock_disponible < ingredient.stock_minimo
+
         return {
             "ingredient_id": ingredient.id,
             "ingredient_name": ingredient.name,
@@ -93,4 +96,6 @@ class InventoryService:
             "stock_fisico": ingredient.stock_fisico,
             "stock_reservado": ingredient.stock_reservado,
             "stock_disponible": ingredient.stock_disponible,
+            "low_stock_alert": alert_triggered,
+            "min_stock_level": ingredient.stock_minimo
         }
