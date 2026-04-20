@@ -1,11 +1,12 @@
 from sqlalchemy.orm import Session
+from app.core.exceptions import DomainException
 from app.models.product import Product
 from app.models.ingredient import Ingredient
 from app.models.stock_movement import StockMovement
 from app.services.inventory_service import InventoryService
 
 
-class InsufficientStockError(ValueError):
+class InsufficientStockError(DomainException):
     def __init__(self, shortages: list[dict]):
         self.shortages = shortages
         super().__init__("Stock insuficiente para confirmar el pedido")
