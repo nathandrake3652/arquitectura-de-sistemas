@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Pastelería</title>
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HTMX CDN -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body class="bg-gray-100 flex h-screen text-gray-800">
+
+    <!-- Sidebar de Navegación -->
+    <aside class="w-64 bg-white shadow-md flex flex-col">
+        <div class="p-6 text-2xl font-bold text-amber-600 border-b">
+            🍰 Pastelería
+        </div>
+        <nav class="flex-wrap p-4 space-y-2 flex-grow">
+            <a href="/" class="block px-4 py-2 rounded hover:bg-amber-50 hover:text-amber-600">🏠 Inicio</a>
+            <a href="/ui/inventory" class="block px-4 py-2 rounded hover:bg-amber-50 hover:text-amber-600">📦 Inventario</a>
+            <a href="/ui/pos" class="block px-4 py-2 rounded hover:bg-amber-50 hover:text-amber-600">🛒 Toma de Pedidos</a>
+            <a href="/ui/kitchen" class="block px-4 py-2 rounded hover:bg-amber-50 hover:text-amber-600">🍳 Cocina</a>
+            <a href="/ui/audit" class="block px-4 py-2 rounded hover:bg-amber-50 hover:text-amber-600">📋 Auditoría</a>
+        </nav>
+    </aside>
+
+    <!-- Contenido Principal -->
+    <main class="flex-1 p-8 overflow-y-auto">
+        {% block content %}
+        <!-- Aquí se inyectarán las demás vistas -->
+        {% endblock %}
+    </main>
+
+</body>
+</html>

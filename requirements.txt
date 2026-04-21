@@ -9,3 +9,5 @@ alembic
 pydantic==2.10.2
 pytest
 httpx
+jinja2
+python-multipart
