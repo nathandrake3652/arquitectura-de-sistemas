@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -14,6 +14,6 @@ class StockMovement(Base):
     cantidad: Mapped[float] = mapped_column(Float, nullable=False)
     tipo: Mapped[str] = mapped_column(String(50), nullable=False)
     motivo: Mapped[str] = mapped_column(String(255), nullable=False)
-    fecha: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    fecha: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now(timezone.utc))
 
     ingredient = relationship("Ingredient")
