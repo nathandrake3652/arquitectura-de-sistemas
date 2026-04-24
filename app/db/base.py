@@ -5,6 +5,7 @@ from app.models.ingredient import Ingredient
 from app.models.product import Product
 from app.models.recipe_item import RecipeItem
 from app.models.stock_movement import StockMovement
+from app.models.order_ticket import OrderTicket
 
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)

@@ -1,14 +1,14 @@
 <tr id="ingredient-row-{{ ingredient.id }}" class="border-b transition duration-200 
-    {% if ingredient.stock_fisico < ingredient.stock_minimo %} bg-red-50 {% else %} hover:bg-gray-50 {% endif %}">
+    {% if ingredient.stock_disponible < ingredient.stock_minimo %} bg-red-50 {% else %} hover:bg-gray-50 {% endif %}">
     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ ingredient.name }}</td>
     <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold 
-        {% if ingredient.stock_fisico < ingredient.stock_minimo %} text-red-600 {% else %} text-gray-900 {% endif %}">
+        {% if ingredient.stock_disponible < ingredient.stock_minimo %} text-red-600 {% else %} text-gray-900 {% endif %}">
         {{ ingredient.stock_fisico }} {{ ingredient.unit.name if ingredient.unit else 'und' }}
     </td>
     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ingredient.stock_reservado }}</td>
     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ ingredient.stock_minimo }}</td>
     <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
-        {% if ingredient.stock_fisico < ingredient.stock_minimo %}
+        {% if ingredient.stock_disponible < ingredient.stock_minimo %}
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                 ¡Alerta: Stock Bajo!
             </span>

@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from app.core.exceptions import DomainException
+from app.models.order_ticket import OrderTicket
 from app.models.product import Product
 from app.models.ingredient import Ingredient
 from app.models.stock_movement import StockMovement
@@ -109,9 +110,18 @@ class OrderService:
             ingredient = locked_ingredients[ingredient_id]
             ingredient.stock_reservado += requirement["required_in_inventory_unit"]
 
+        ticket = OrderTicket(
+            product_id=product.id,
+            order_quantity=order_quantity,
+            status="confirmado",
+        )
+        self.db.add(ticket)
+
         self.db.commit()
+        self.db.refresh(ticket)
 
         return {
+            "order_id": ticket.id,
             "product_id": product.id,
             "product_name": product.name,
             "order_quantity": order_quantity,
@@ -127,8 +137,72 @@ class OrderService:
             "status": "confirmed",
         }
 
-    def finish_order(self, product_id: int, order_quantity: int, status: str) -> dict:
-        """Finaliza producción de un pedido: consume físico y libera reservado."""
+    def list_kitchen_orders(self) -> list[OrderTicket]:
+        return (
+            self.db.query(OrderTicket)
+            .filter(OrderTicket.status.in_(["confirmado", "preparado"]))
+            .order_by(OrderTicket.created_at.asc())
+            .all()
+        )
+
+    def get_kitchen_order(self, order_id: int) -> OrderTicket:
+        order = self.db.query(OrderTicket).filter(OrderTicket.id == order_id).first()
+        if not order:
+            raise ValueError("Pedido no encontrado")
+        return order
+
+    def mark_order_ready(self, order_id: int) -> dict:
+        order = (
+            self.db.query(OrderTicket)
+            .filter(OrderTicket.id == order_id)
+            .with_for_update()
+            .first()
+        )
+        if not order:
+            raise ValueError("Pedido no encontrado")
+        if order.status != "confirmado":
+            raise ValueError("Solo pedidos confirmados se pueden marcar como listos")
+
+        self._consume_reserved_for_order(
+            product_id=order.product_id,
+            order_quantity=order.order_quantity,
+            movement_status="preparado",
+        )
+        order.status = "preparado"
+        self.db.commit()
+        self.db.refresh(order)
+
+        return {
+            "order_id": order.id,
+            "product_name": order.product.name,
+            "order_quantity": order.order_quantity,
+            "status": order.status,
+        }
+
+    def mark_order_delivered(self, order_id: int) -> dict:
+        order = (
+            self.db.query(OrderTicket)
+            .filter(OrderTicket.id == order_id)
+            .with_for_update()
+            .first()
+        )
+        if not order:
+            raise ValueError("Pedido no encontrado")
+        if order.status != "preparado":
+            raise ValueError("Solo pedidos listos se pueden marcar como entregados")
+
+        order.status = "entregado"
+        self.db.commit()
+        self.db.refresh(order)
+
+        return {
+            "order_id": order.id,
+            "product_name": order.product.name,
+            "order_quantity": order.order_quantity,
+            "status": order.status,
+        }
+
+    def _consume_reserved_for_order(self, product_id: int, order_quantity: int, movement_status: str) -> dict:
         product = self.db.query(Product).filter(Product.id == product_id).first()
         if not product:
             raise ValueError("Producto no encontrado")
@@ -194,17 +268,15 @@ class OrderService:
                     ingredient_id=ingredient.id,
                     cantidad=consumed,
                     tipo="salida_produccion",
-                    motivo=f"{status}: {product.name}",
+                    motivo=f"{movement_status}: {product.name}",
                 )
             )
-
-        self.db.commit()
 
         return {
             "product_id": product.id,
             "product_name": product.name,
             "order_quantity": order_quantity,
-            "status": status,
+            "status": movement_status,
             "consumed_ingredients": [
                 {
                     "ingredient_id": req["ingredient_id"],
@@ -215,3 +287,13 @@ class OrderService:
                 for req in requirements.values()
             ],
         }
+
+    def finish_order(self, product_id: int, order_quantity: int, status: str) -> dict:
+        """Finaliza producción de un pedido: consume físico y libera reservado."""
+        result = self._consume_reserved_for_order(
+            product_id=product_id,
+            order_quantity=order_quantity,
+            movement_status=status,
+        )
+        self.db.commit()
+        return result
