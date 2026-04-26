@@ -99,3 +99,54 @@ class InventoryService:
             "low_stock_alert": alert_triggered,
             "min_stock_level": ingredient.stock_minimo
         }
+
+    def get_stock_movements(self, ingredient_id: int = None, movement_type: str = None) -> list:
+        """Obtiene historial de movimientos de stock con filtros opcionales."""
+        query = self.db.query(StockMovement).order_by(StockMovement.fecha.desc())
+        
+        if ingredient_id:
+            query = query.filter(StockMovement.ingredient_id == ingredient_id)
+        
+        if movement_type:
+            query = query.filter(StockMovement.tipo == movement_type)
+        
+        movements = query.all()
+        return movements
+
+    def get_movements_with_details(self, ingredient_id: int = None, movement_type: str = None) -> list:
+        """Obtiene movimientos con detalles del ingrediente para display."""
+        movements = self.get_stock_movements(ingredient_id, movement_type)
+        
+        result = []
+        for movement in movements:
+            ingredient = self.db.query(Ingredient).filter(Ingredient.id == movement.ingredient_id).first()
+            result.append({
+                "id": movement.id,
+                "ingredient_name": ingredient.name if ingredient else "Desconocido",
+                "ingredient_id": movement.ingredient_id,
+                "cantidad": movement.cantidad,
+                "tipo": movement.tipo,
+                "motivo": movement.motivo,
+                "fecha": movement.fecha,
+                "unit": ingredient.unit.abbreviation if ingredient else ""
+            })
+        
+        return result
+
+    def get_movements_summary(self) -> dict:
+        """Obtiene resumen de movimientos por tipo."""
+        movements = self.db.query(StockMovement).all()
+        
+        summary = {
+            "entrada_compra": {"count": 0, "total": 0},
+            "salida_merma": {"count": 0, "total": 0},
+            "salida_produccion": {"count": 0, "total": 0},
+        }
+        
+        for movement in movements:
+            if movement.tipo not in summary:
+                summary[movement.tipo] = {"count": 0, "total": 0}
+            summary[movement.tipo]["count"] += 1
+            summary[movement.tipo]["total"] += movement.cantidad
+        
+        return summary

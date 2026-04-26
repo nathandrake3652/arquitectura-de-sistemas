@@ -1,0 +1,71 @@
+<div id="audit-results">
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto">
+            <table id="movements-table" class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ingrediente</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Motivo</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% if movements %}
+                        {% for movement in movements %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ movement.fecha.strftime("%Y-%m-%d %H:%M") }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <a href="/ui/audit?ingredient_id={{ movement.ingredient_id }}" class="text-sm text-amber-600 hover:text-amber-800 hover:underline">
+                                        {{ movement.ingredient_name }}
+                                    </a>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if movement.tipo == "entrada_compra" %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            ✓ Entrada Compra
+                                        </span>
+                                    {% elif movement.tipo == "salida_merma" %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            ✗ Merma
+                                        </span>
+                                    {% elif movement.tipo == "salida_produccion" %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            → Producción
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                            {{ movement.tipo }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                    {{ "%.2f"|format(movement.cantidad) }} {{ movement.unit }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-600">
+                                    {{ movement.motivo }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-10 text-center text-sm text-gray-500">
+                                No hay movimientos de stock que coincidan con los filtros aplicados.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        {% if movements %}
+            <div class="bg-gray-50 px-6 py-4 border-t">
+                <p class="text-sm text-gray-600">
+                    Total de registros: <span class="font-semibold">{{ movements|length }}</span>
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</div>

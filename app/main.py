@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Form
+from fastapi import Depends, FastAPI, Form, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -113,3 +113,55 @@ async def adjust_inventory(
     update_ingredient = get_ingredient(db, ingredient_id)
 
     return templates.TemplateResponse("inventory_row.html", {"request": request, "ingredient": update_ingredient})
+
+
+@app.get("/ui/audit", tags=["UI"])
+async def render_audit(
+    request: Request,
+    ingredient_id: str | None = Query(default=None),
+    movement_type: str = None,
+    db: Session = Depends(get_db)
+):
+    """Vista de auditoría y trazabilidad de movimientos de stock."""
+    inventory_service = InventoryService(db)
+
+    ingredient_filter = None
+    if ingredient_id not in (None, ""):
+        try:
+            ingredient_filter = int(ingredient_id)
+        except ValueError:
+            raise DomainException("El ingrediente seleccionado no es válido")
+    
+    # Obtener movimientos con filtros
+    movements = inventory_service.get_movements_with_details(
+        ingredient_id=ingredient_filter,
+        movement_type=movement_type or None
+    )
+    
+    # Obtener resumen estadístico
+    summary = inventory_service.get_movements_summary()
+    
+    # Obtener ingredientes para el filtro
+    ingredients = get_ingredients(db)
+    
+    # Tipos de movimiento disponibles
+    movement_types = [
+        {"value": "entrada_compra", "label": "Entrada de Compra"},
+        {"value": "salida_merma", "label": "Salida por Merma"},
+        {"value": "salida_produccion", "label": "Salida por Producción"},
+    ]
+
+    context = {
+        "request": request,
+        "movements": movements,
+        "summary": summary,
+        "ingredients": ingredients,
+        "movement_types": movement_types,
+        "selected_ingredient_id": ingredient_filter,
+        "selected_movement_type": movement_type or None,
+    }
+
+    if request.headers.get("HX-Request") == "true":
+        return templates.TemplateResponse("audit_panel.html", context)
+
+    return templates.TemplateResponse("audit.html", context)
