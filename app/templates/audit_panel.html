@@ -9,17 +9,17 @@
         <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
             <p class="text-sm font-medium text-gray-600">Entradas de Compra</p>
             <p class="text-2xl font-bold text-green-600">{{ summary.entrada_compra.count }}</p>
-            <p class="text-xs text-gray-500">Total: {{ "%.2f"|format(summary.entrada_compra.total) }}</p>
+            <p class="text-xs text-gray-500">Valor Total: ${{ "%.0f"|format(summary.entrada_compra.total) }}</p>
         </div>
         <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
             <p class="text-sm font-medium text-gray-600">Salidas por Merma</p>
             <p class="text-2xl font-bold text-red-600">{{ summary.salida_merma.count }}</p>
-            <p class="text-xs text-gray-500">Total: {{ "%.2f"|format(summary.salida_merma.total) }}</p>
+            <p class="text-xs text-gray-500">Pérdida Total: ${{ "%.0f"|format(summary.salida_merma.total) }}</p>
         </div>
         <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
             <p class="text-sm font-medium text-gray-600">Salidas por Producción</p>
             <p class="text-2xl font-bold text-yellow-600">{{ summary.salida_produccion.count }}</p>
-            <p class="text-xs text-gray-500">Total: {{ "%.2f"|format(summary.salida_produccion.total) }}</p>
+            <p class="text-xs text-gray-500">Ingreso Generado: ${{ "%.0f"|format(summary.salida_produccion.total) }}</p>
         </div>
     </div>
 

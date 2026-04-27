@@ -24,6 +24,7 @@ def _get_or_create_ingredient(
     stock_fisico: float,
     stock_reservado: float,
     stock_minimo: float,
+    price: int,
 ) -> Ingredient:
     ingredient = db.query(Ingredient).filter(Ingredient.name == name).first()
     if ingredient:
@@ -31,6 +32,7 @@ def _get_or_create_ingredient(
         ingredient.stock_fisico = stock_fisico
         ingredient.stock_reservado = stock_reservado
         ingredient.stock_minimo = stock_minimo
+        ingredient.price = price
         return ingredient
 
     ingredient = Ingredient(
@@ -39,6 +41,7 @@ def _get_or_create_ingredient(
         stock_fisico=stock_fisico,
         stock_reservado=stock_reservado,
         stock_minimo=stock_minimo,
+        price=price,
     )
     db.add(ingredient)
     db.flush()
@@ -127,20 +130,20 @@ def populate_seed_data() -> None:
 
         # Ingredients
         ing_harina = _get_or_create_ingredient(
-            db, "Harina", unit_g.id, stock_fisico=5000.0, stock_reservado=0.0, stock_minimo=1000.0
+            db, "Harina", unit_g.id, stock_fisico=5000.0, stock_reservado=0.0, stock_minimo=1000.0, price=1000
         )
         ing_huevos = _get_or_create_ingredient(
-            db, "Huevos", unit_u.id, stock_fisico=30.0, stock_reservado=0.0, stock_minimo=12.0
+            db, "Huevos", unit_u.id, stock_fisico=30.0, stock_reservado=0.0, stock_minimo=12.0, price=250
         )
         ing_leche = _get_or_create_ingredient(
-            db, "Leche", unit_ml.id, stock_fisico=10000.0, stock_reservado=0.0, stock_minimo=2000.0
+            db, "Leche", unit_ml.id, stock_fisico=10000.0, stock_reservado=0.0, stock_minimo=2000.0, price=1500
         )
         ing_azucar = _get_or_create_ingredient(
-            db, "Azucar", unit_g.id, stock_fisico=4000.0, stock_reservado=0.0, stock_minimo=800.0
+            db, "Azucar", unit_g.id, stock_fisico=4000.0, stock_reservado=0.0, stock_minimo=800.0, price=1000
         )
         ing_levadura = _get_or_create_ingredient(
-            db, "Levadura", unit_g.id, stock_fisico=15.0, stock_reservado=0.0, stock_minimo=50.0
-            )
+            db, "Levadura", unit_g.id, stock_fisico=15.0, stock_reservado=0.0, stock_minimo=50.0, price=500
+        )
 
         #Movements
         _create_stock_movement(db, ing_harina.id, 5000.0, "entrada_compra", "Stock Inicial (Carga de Sistema)")

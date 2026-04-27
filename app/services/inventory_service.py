@@ -157,7 +157,9 @@ class InventoryService:
         }
 
     def get_movements_summary(self) -> dict:
-        """Obtiene resumen de movimientos por tipo."""
+        """Obtiene resumen de movimientos en total de dinero."""
+        from app.models.order_ticket import OrderTicket
+
         movements = self.db.query(StockMovement).all()
         
         summary = {
@@ -167,9 +169,25 @@ class InventoryService:
         }
         
         for movement in movements:
-            if movement.tipo not in summary:
-                summary[movement.tipo] = {"count": 0, "total": 0}
-            summary[movement.tipo]["count"] += 1
-            summary[movement.tipo]["total"] += movement.cantidad
+            ingredient = movement.ingredient
+            # El precio de ingredientes en gramos o mililitros representa el precio por Kilo o Litro
+            if ingredient.unit.abbreviation in ['g', 'ml']:
+                precio_unitario = ingredient.price / 1000.0
+            else:
+                precio_unitario = ingredient.price
+
+            if movement.tipo == "salida_produccion":
+                summary["salida_produccion"]["count"] += 1
+            else:
+                if movement.tipo not in summary:
+                    summary[movement.tipo] = {"count": 0, "total": 0}
+                valor_movimiento = float(movement.cantidad) * float(precio_unitario)
+                summary[movement.tipo]["count"] += 1
+                summary[movement.tipo]["total"] += valor_movimiento
+
+        # El costo/ingreso de producción ahora se valora usando el precio del producto vendido
+        orders = self.db.query(OrderTicket).filter(OrderTicket.status.in_(["entregado", "listo", "confirmado", "preparando"])).all()
+        total_produccion = sum(float(order.order_quantity) * float(order.product.price) for order in orders)
+        summary["salida_produccion"]["total"] = total_produccion
         
         return summary

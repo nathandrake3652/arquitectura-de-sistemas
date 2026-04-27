@@ -51,10 +51,9 @@ def check_order_htmx(
         ) from exc
 
     if request.headers.get("HX-Request") == "true":
-        return templates.TemplateResponse(
+        return templates.TemplateResponse(request, 
             "order_check_result.html",
             {
-                "request": request,
                 "result": result,
             },
         )
@@ -112,10 +111,9 @@ def confirm_order_htmx(
         ) from exc
 
     if request.headers.get("HX-Request") == "true":
-        return templates.TemplateResponse(
+        return templates.TemplateResponse( request, 
             "order_confirm_result.html",
             {
-                "request": request,
                 "result": result,
             },
         )

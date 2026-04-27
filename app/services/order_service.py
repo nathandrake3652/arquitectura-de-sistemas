@@ -292,7 +292,7 @@ class OrderService:
             "status": order.status,
         }
 
-    def _consume_reserved_for_order(self, product_id: int, order_quantity: int, movement_status: str, order_id: int) -> dict:
+    def _consume_reserved_for_order(self, product_id: int, order_quantity: int, movement_status: str, order_id: int = None) -> dict:
         product = self.db.query(Product).filter(Product.id == product_id).first()
         if not product:
             raise ValueError("Producto no encontrado")

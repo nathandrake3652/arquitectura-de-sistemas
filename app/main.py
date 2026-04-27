@@ -53,20 +53,20 @@ def health_check():
 
 @app.get("/", tags=["UI"])
 async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 @app.get("/ui/inventory", tags=["UI"])
 async def render_inventory(request: Request, db: Session = Depends(get_db)):
     ingredients = get_ingredients(db)
     order_service = OrderService(db)
     pending_orders = order_service.list_pending_orders()
-    return templates.TemplateResponse("inventory.html", {"request": request, "ingredients": ingredients, "pending_orders": pending_orders})
+    return templates.TemplateResponse(request,"inventory.html", {"ingredients": ingredients, "pending_orders": pending_orders})
 
 
 @app.get("/ui/pos", tags=["UI"])
 async def render_pos(request: Request, db: Session = Depends(get_db)):
     products = get_products(db)
-    return templates.TemplateResponse("pos.html", {"request": request, "products": products})
+    return templates.TemplateResponse(request, "pos.html", {"products": products})
 
 @app.post("/ui/pos/check", tags=["UI"])
 async def ui_check_order(
@@ -78,7 +78,7 @@ async def ui_check_order(
     """Recibe la solicitud en HTML, analiza ingredientes y retorna HTML parcial"""
     order_service = OrderService(db)
     result = order_service.analyze_order_requirements(product_id, order_quantity)
-    return templates.TemplateResponse("order_check_result.html", {"request": request, "result": result})
+    return templates.TemplateResponse(request, "order_check_result.html", {"result": result})
 
 @app.post("/ui/pos/confirm", tags=["UI"])
 async def ui_confirm_order(
@@ -90,7 +90,7 @@ async def ui_confirm_order(
     """Confirma el pedido y muestra el ticket dinámicamente con HTMX"""
     order_service = OrderService(db)
     result = order_service.confirm_order(product_id, order_quantity)
-    return templates.TemplateResponse("order_confirm_result.html", {"request": request, "result": result})
+    return templates.TemplateResponse(request, "order_confirm_result.html", {"result": result})
 
 @app.post("/ui/pos/pending", tags=["UI"])
 async def ui_pending_order(
@@ -102,7 +102,7 @@ async def ui_pending_order(
     """Guarda un pedido sin stock como pendiente"""
     order_service = OrderService(db)
     result = order_service.create_pending_order(product_id, order_quantity)
-    return templates.TemplateResponse("order_pending_result.html", {"request": request, "result": result})
+    return templates.TemplateResponse(request, "order_pending_result.html", {"result": result})
 
 @app.get("/ui/inventory/pending/{order_id}/details", tags=["UI"])
 async def ui_pending_order_details(
@@ -117,7 +117,7 @@ async def ui_pending_order_details(
         
     order_service = OrderService(db)
     analysis = order_service.analyze_order_requirements(order.product_id, order.order_quantity)
-    return templates.TemplateResponse("inventory_pending_modal.html", {"request": request, "order": order, "analysis": analysis})
+    return templates.TemplateResponse(request,"inventory_pending_modal.html", {"order": order, "analysis": analysis})
 
 @app.post("/ui/inventory/pending/{order_id}/approve", tags=["UI"])
 async def ui_approve_pending_order(
@@ -156,7 +156,7 @@ async def ui_approve_pending_order(
 async def render_kitchen(request: Request, db: Session = Depends(get_db)):
     order_service = OrderService(db)
     orders = order_service.list_kitchen_orders()
-    return templates.TemplateResponse("kitchen.html", {"request": request, "orders": orders})
+    return templates.TemplateResponse(request, "kitchen.html", {"orders": orders})
 
 
 @app.post("/ui/kitchen/{order_id}/ready", tags=["UI"])
@@ -164,7 +164,7 @@ async def mark_order_ready(request: Request, order_id: int, db: Session = Depend
     order_service = OrderService(db)
     order_service.mark_order_ready(order_id)
     order = order_service.get_kitchen_order(order_id)
-    return templates.TemplateResponse("kitchen_order_row.html", {"request": request, "order": order})
+    return templates.TemplateResponse(request, "kitchen_order_row.html", {"order": order})
 
 
 @app.post("/ui/kitchen/{order_id}/deliver", tags=["UI"])
@@ -172,7 +172,7 @@ async def mark_order_delivered(request: Request, order_id: int, db: Session = De
     order_service = OrderService(db)
     order_service.mark_order_delivered(order_id)
     order = order_service.get_kitchen_order(order_id)
-    return templates.TemplateResponse("kitchen_order_row.html", {"request": request, "order": order})
+    return templates.TemplateResponse(request, "kitchen_order_row.html", {"order": order})
 
 @app.get("/ui/kitchen/history", tags=["UI"])
 async def render_kitchen_history(
@@ -185,8 +185,9 @@ async def render_kitchen_history(
     history_data = order_service.get_kitchen_history(page=page)
     
     return templates.TemplateResponse(
+        request,
         "kitchen_history.html", 
-        {"request": request, "history": history_data}
+        {"history": history_data}
     )
 
 @app.post("/ui/inventory/{ingredient_id}/adjust", tags=["UI"])
@@ -213,7 +214,7 @@ async def adjust_inventory(
 
     update_ingredient = get_ingredient(db, ingredient_id)
 
-    return templates.TemplateResponse("inventory_row.html", {"request": request, "ingredient": update_ingredient})
+    return templates.TemplateResponse(request, "inventory_row.html", {"ingredient": update_ingredient})
 
 
 @app.get("/ui/audit", tags=["UI"])
@@ -269,9 +270,9 @@ async def render_audit(
     }
 
     if request.headers.get("HX-Request") == "true":
-        return templates.TemplateResponse("audit_panel.html", context)
+        return templates.TemplateResponse(request,"audit_panel.html", context)
 
-    return templates.TemplateResponse("audit.html", context)
+    return templates.TemplateResponse(request, "audit.html", context)
 
 def format_datetime_local(dt: datetime, fmt="%Y-%m-%d %H:%M:%S", tz_name="America/Santiago"):
     if dt is None:
