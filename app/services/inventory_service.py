@@ -1,3 +1,6 @@
+from datetime import datetime
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.ingredient import Ingredient
 from app.models.stock_movement import StockMovement
@@ -113,9 +116,24 @@ class InventoryService:
         movements = query.all()
         return movements
 
-    def get_movements_with_details(self, ingredient_id: int = None, movement_type: str = None) -> list:
+    def get_movements_with_details(self, ingredient_id: int = None, movement_type: str = None, fecha: str = None, page: int = 1, per_page: int = 10) -> dict:
         """Obtiene movimientos con detalles del ingrediente para display."""
-        movements = self.get_stock_movements(ingredient_id, movement_type)
+        query = self.db.query(StockMovement).order_by(StockMovement.fecha.desc())
+        
+        if ingredient_id:
+            query = query.filter(StockMovement.ingredient_id == ingredient_id)
+        if movement_type:
+            query = query.filter(StockMovement.tipo == movement_type)
+        if fecha:
+            fecha_obj = datetime.strptime(fecha, "%Y-%m-%d").date()
+            # Filtra ignorando horas (convirtiendo a date)
+            query = query.filter(func.date(StockMovement.fecha) == fecha_obj)
+            
+        total_items = query.count()
+        total_pages = (total_items + per_page - 1) // per_page
+        
+        start_idx = (page - 1) * per_page
+        movements = query.offset(start_idx).limit(per_page).all()
         
         result = []
         for movement in movements:
@@ -131,7 +149,12 @@ class InventoryService:
                 "unit": ingredient.unit.abbreviation if ingredient else ""
             })
         
-        return result
+        return {
+            "movimientos": result,
+            "total_pages": max(total_pages, 1),
+            "current_page": page,
+            "has_items": total_items > 0
+        }
 
     def get_movements_summary(self) -> dict:
         """Obtiene resumen de movimientos por tipo."""

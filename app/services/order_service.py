@@ -137,6 +137,95 @@ class OrderService:
             "status": "confirmed",
         }
 
+    def create_pending_order(self, product_id: int, order_quantity: int) -> dict:
+        """Crea un pedido en estado pendiente sin descontar stock."""
+        product = self.db.query(Product).filter(Product.id == product_id).first()
+        if not product:
+            raise ValueError("Producto no encontrado")
+            
+        ticket = OrderTicket(
+            product_id=product.id,
+            order_quantity=order_quantity,
+            status="pendiente",
+        )
+        self.db.add(ticket)
+        self.db.commit()
+        self.db.refresh(ticket)
+        
+        return {
+            "order_id": ticket.id,
+            "product_name": product.name,
+            "order_quantity": order_quantity,
+            "status": "pendiente",
+        }
+
+    def list_pending_orders(self) -> list[OrderTicket]:
+        return (
+            self.db.query(OrderTicket)
+            .filter(OrderTicket.status == "pendiente")
+            .order_by(OrderTicket.created_at.asc())
+            .all()
+        )
+
+    def approve_pending_order(self, order_id: int) -> dict:
+        """Aprueba un pedido pendiente moviendo stock disponible a reservado."""
+        ticket = self.db.query(OrderTicket).filter(OrderTicket.id == order_id).first()
+        if not ticket or ticket.status != "pendiente":
+            raise ValueError("Pedido no encontrado o no está pendiente")
+            
+        product = ticket.product
+        
+        recipe_items_by_ingredient: dict[int, list] = {}
+        for item in product.recipe_items:
+            recipe_items_by_ingredient.setdefault(item.ingredient_id, []).append(item)
+
+        locked_ingredients: dict[int, Ingredient] = {}
+        requirements: dict[int, dict] = {}
+        shortages: list[dict] = []
+
+        for ingredient_id, items in recipe_items_by_ingredient.items():
+            ingredient = (
+                self.db.query(Ingredient)
+                .filter(Ingredient.id == ingredient_id)
+                .with_for_update()
+                .one()
+            )
+            locked_ingredients[ingredient_id] = ingredient
+
+            required_in_inventory_unit = 0.0
+            for item in items:
+                required_in_inventory_unit += self.inventory_service.calculate_requirement(
+                    ingredient=ingredient,
+                    recipe_unit=item.unit,
+                    required_quantity=item.quantity * ticket.order_quantity,
+                )["required_in_inventory_unit"]
+
+            requirements[ingredient_id] = {
+                "ingredient_id": ingredient.id,
+                "required_in_inventory_unit": required_in_inventory_unit,
+            }
+
+            missing = max(0.0, required_in_inventory_unit - ingredient.stock_disponible)
+            if missing > 0:
+                shortages.append({
+                    "ingredient_id": ingredient.id,
+                    "missing_in_inventory_unit": missing,
+                })
+
+        if shortages:
+            self.db.rollback()
+            raise InsufficientStockError(shortages)
+
+        for ingredient_id, requirement in requirements.items():
+            ingredient = locked_ingredients[ingredient_id]
+            ingredient.stock_reservado += requirement["required_in_inventory_unit"]
+
+        ticket.status = "confirmado"
+        self.db.commit()
+        self.db.refresh(ticket)
+
+        return {"order_id": ticket.id, "status": "confirmed"}
+
     def list_kitchen_orders(self) -> list[OrderTicket]:
         return (
             self.db.query(OrderTicket)
@@ -167,6 +256,7 @@ class OrderService:
             product_id=order.product_id,
             order_quantity=order.order_quantity,
             movement_status="preparado",
+            order_id=order.id
         )
         order.status = "preparado"
         self.db.commit()
@@ -202,7 +292,7 @@ class OrderService:
             "status": order.status,
         }
 
-    def _consume_reserved_for_order(self, product_id: int, order_quantity: int, movement_status: str) -> dict:
+    def _consume_reserved_for_order(self, product_id: int, order_quantity: int, movement_status: str, order_id: int) -> dict:
         product = self.db.query(Product).filter(Product.id == product_id).first()
         if not product:
             raise ValueError("Producto no encontrado")
@@ -263,12 +353,14 @@ class OrderService:
             ingredient.stock_reservado -= consumed
             ingredient.stock_fisico -= consumed
 
+            motivo_texto = f"Pedido #{order_id}: {product.name}" if order_id else f"{movement_status}: {product.name}"
+
             self.db.add(
                 StockMovement(
                     ingredient_id=ingredient.id,
                     cantidad=consumed,
                     tipo="salida_produccion",
-                    motivo=f"{movement_status}: {product.name}",
+                    motivo=motivo_texto,
                 )
             )
 
@@ -297,3 +389,30 @@ class OrderService:
         )
         self.db.commit()
         return result
+    
+    def get_kitchen_history(self, page: int = 1, per_page: int = 5) -> dict:
+        # Trae ultimos 20 pedidos entregados
+        recent_20 =(
+            self.db.query(OrderTicket)
+            .filter(OrderTicket.status == "entregado")
+            .order_by(OrderTicket.updated_at.desc())
+            .limit(20)
+            .all()
+        )
+        total_items = len(recent_20)
+
+        #paginación
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_orders = recent_20[start_idx:end_idx]
+
+        total_pages = (total_items + per_page - 1) // per_page
+
+        
+
+        return {
+            "orders": paginated_orders,
+            "total_pages": total_pages,
+            "current_page": page,
+            "has_items": total_items > 0
+        }

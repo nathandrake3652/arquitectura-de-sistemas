@@ -1,7 +1,9 @@
 from app.db.session import SessionLocal
 from app.models.ingredient import Ingredient
+from app.models.order_ticket import OrderTicket
 from app.models.product import Product
 from app.models.recipe_item import RecipeItem
+from app.models.stock_movement import StockMovement
 from app.models.unit import Unit
 
 
@@ -86,6 +88,33 @@ def _upsert_recipe_item(
     db.flush()
     return recipe_item
 
+def _create_stock_movement(db, ingredient_id: int, cantidad: float, tipo: str, motivo: str):
+    # Verificamos si existe por si ejecutamos el seed múltiples veces (solo revisando motivo y cantidad)
+    mov = db.query(StockMovement).filter(
+        StockMovement.ingredient_id == ingredient_id,
+        StockMovement.cantidad == cantidad,
+        StockMovement.tipo == tipo,
+        StockMovement.motivo == motivo
+    ).first()
+    if not mov:
+        mov = StockMovement(ingredient_id=ingredient_id, cantidad=cantidad, tipo=tipo, motivo=motivo)
+        db.add(mov)
+        db.flush()
+    return mov
+
+
+def _get_or_create_order_ticket(db, product_id: int, order_quantity: int, status: str) -> OrderTicket:
+    ticket = db.query(OrderTicket).filter(
+        OrderTicket.product_id == product_id,
+        OrderTicket.order_quantity == order_quantity,
+        OrderTicket.status == status
+    ).first()
+    if not ticket:
+        ticket = OrderTicket(product_id=product_id, order_quantity=order_quantity, status=status)
+        db.add(ticket)
+        db.flush()
+    return ticket
+
 
 def populate_seed_data() -> None:
     with SessionLocal() as db:
@@ -109,6 +138,18 @@ def populate_seed_data() -> None:
         ing_azucar = _get_or_create_ingredient(
             db, "Azucar", unit_g.id, stock_fisico=4000.0, stock_reservado=0.0, stock_minimo=800.0
         )
+        ing_levadura = _get_or_create_ingredient(
+            db, "Levadura", unit_g.id, stock_fisico=15.0, stock_reservado=0.0, stock_minimo=50.0
+            )
+
+        #Movements
+        _create_stock_movement(db, ing_harina.id, 5000.0, "entrada_compra", "Stock Inicial (Carga de Sistema)")
+        _create_stock_movement(db, ing_huevos.id, 32.0, "entrada_compra", "Stock Inicial (Carga de Sistema)")
+        _create_stock_movement(db, ing_leche.id, 10000.0, "entrada_compra", "Stock Inicial (Carga de Sistema)")
+        _create_stock_movement(db, ing_azucar.id, 4000.0, "entrada_compra", "Stock Inicial (Carga de Sistema)")
+        _create_stock_movement(db, ing_levadura.id, 15.0, "entrada_compra", "Stock Inicial (Carga de Sistema)")
+        #Merma
+        _create_stock_movement(db, ing_huevos.id, 2.0, "salida_merma", "Huevos rotos en almacén")
 
         # Products
         prod_pastel = _get_or_create_product(

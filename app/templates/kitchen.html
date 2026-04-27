@@ -33,4 +33,15 @@
         </table>
     </div>
 </div>
+<div class="mt-8 mb-4">
+    <h2 class="text-xl font-bold text-gray-700">Historial Pedidos Recientes</h2>
+</div>
+<div class="bg-white rounded-lg shadow overflow-hidden"
+        id="kitchen-history-container"
+        hx-get="/ui/kitchen/history?page=1"
+        hx-trigger="load">
+        <div class="p-6 text-center text-gray-500">
+            Cargando historial de entregas recientes...
+        </div>
+</div>
 {% endblock %}

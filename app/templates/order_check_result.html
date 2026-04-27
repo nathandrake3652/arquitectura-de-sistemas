@@ -44,11 +44,20 @@
     </div>
 
     {% if result.can_be_fulfilled %}
-    <form hx-post="/api/v1/orders/confirm" hx-target="#order-check-result" hx-swap="innerHTML" class="pt-2">
+    <form hx-post="/ui/pos/confirm" hx-target="#order-check-result" hx-swap="innerHTML" class="pt-2">
         <input type="hidden" name="product_id" value="{{ result.product_id }}">
         <input type="hidden" name="order_quantity" value="{{ result.order_quantity }}">
         <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium">
             Confirmar Pedido
+        </button>
+    </form>
+    {% else %}
+    <form hx-post="/ui/pos/pending" hx-target="#order-check-result" hx-swap="innerHTML" class="pt-2 flex items-center space-x-4">
+        <p class="text-sm font-medium text-amber-600">No hay stock suficiente.</p>
+        <input type="hidden" name="product_id" value="{{ result.product_id }}">
+        <input type="hidden" name="order_quantity" value="{{ result.order_quantity }}">
+        <button type="submit" class="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600 font-medium transition">
+            Guardar en Espera
         </button>
     </form>
     {% endif %}

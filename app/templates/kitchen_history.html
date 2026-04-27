@@ -1,0 +1,85 @@
+{% if history.has_items %}
+<div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Últimos Entregados</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hora Entrega</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for item in history.orders %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 text-sm font-medium text-gray-500">#{{ item.id }}</td>
+                <td class="px-6 py-4 text-sm text-gray-400">{{ item.product.name }}</td>
+                <td class="px-6 py-4 text-sm text-gray-400">{{ item.order_quantity }}</td>
+                <td class="px-6 py-4 text-sm text-gray-400">{{ item.updated_at | local_time }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Controles de Paginación -->
+{% if history.total_pages > 1 %}
+<div class="bg-gray-50 px-6 py-3 border-t flex items-center justify-between">
+    <div class="flex-1 flex justify-between sm:hidden">
+        <!-- Puedes añadir versión móvil aquí si quieres -->
+    </div>
+    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+            <p class="text-sm text-gray-700">
+                Página <span class="font-medium">{{ history.current_page }}</span> de <span class="font-medium">{{ history.total_pages }}</span>
+            </p>
+        </div>
+        <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <!-- Botón Anterior -->
+                {% if history.current_page > 1 %}
+                <button hx-get="/ui/kitchen/history?page={{ history.current_page - 1 }}" hx-target="#kitchen-history-container" hx-swap="innerHTML" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <span class="sr-only">Anterior</span>
+                    ←
+                </button>
+                {% else %}
+                <button disabled class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-200 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                    ←
+                </button>
+                {% endif %}
+
+                <!-- Números de Página -->
+                {% for i in range(1, history.total_pages + 1) %}
+                    {% if i == history.current_page %}
+                        <span class="relative inline-flex items-center px-4 py-2 border border-amber-500 bg-amber-50 text-sm font-medium text-amber-600">
+                            {{ i }}
+                        </span>
+                    {% else %}
+                        <button hx-get="/ui/kitchen/history?page={{ i }}" hx-target="#kitchen-history-container" hx-swap="innerHTML" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            {{ i }}
+                        </button>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- Botón Siguiente -->
+                {% if history.current_page < history.total_pages %}
+                <button hx-get="/ui/kitchen/history?page={{ history.current_page + 1 }}" hx-target="#kitchen-history-container" hx-swap="innerHTML" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <span class="sr-only">Siguiente</span>
+                    →
+                </button>
+                {% else %}
+                <button disabled class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-200 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                    →
+                </button>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="px-6 py-10 text-center text-sm text-gray-500">
+    Aún no hay pedidos finalizados (entregados).
+</div>
+{% endif %}

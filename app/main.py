@@ -1,13 +1,14 @@
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
-from fastapi import Depends, FastAPI, Form, Query
+from fastapi import Depends, FastAPI, Form, Query, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from app.core.exceptions import DomainException
-from fastapi import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -57,7 +58,9 @@ async def read_root(request: Request):
 @app.get("/ui/inventory", tags=["UI"])
 async def render_inventory(request: Request, db: Session = Depends(get_db)):
     ingredients = get_ingredients(db)
-    return templates.TemplateResponse("inventory.html", {"request": request, "ingredients": ingredients})
+    order_service = OrderService(db)
+    pending_orders = order_service.list_pending_orders()
+    return templates.TemplateResponse("inventory.html", {"request": request, "ingredients": ingredients, "pending_orders": pending_orders})
 
 
 @app.get("/ui/pos", tags=["UI"])
@@ -65,6 +68,89 @@ async def render_pos(request: Request, db: Session = Depends(get_db)):
     products = get_products(db)
     return templates.TemplateResponse("pos.html", {"request": request, "products": products})
 
+@app.post("/ui/pos/check", tags=["UI"])
+async def ui_check_order(
+    request: Request, 
+    product_id: int = Form(...), 
+    order_quantity: int = Form(...), 
+    db: Session = Depends(get_db)
+):
+    """Recibe la solicitud en HTML, analiza ingredientes y retorna HTML parcial"""
+    order_service = OrderService(db)
+    result = order_service.analyze_order_requirements(product_id, order_quantity)
+    return templates.TemplateResponse("order_check_result.html", {"request": request, "result": result})
+
+@app.post("/ui/pos/confirm", tags=["UI"])
+async def ui_confirm_order(
+    request: Request, 
+    product_id: int = Form(...), 
+    order_quantity: int = Form(...), 
+    db: Session = Depends(get_db)
+):
+    """Confirma el pedido y muestra el ticket dinámicamente con HTMX"""
+    order_service = OrderService(db)
+    result = order_service.confirm_order(product_id, order_quantity)
+    return templates.TemplateResponse("order_confirm_result.html", {"request": request, "result": result})
+
+@app.post("/ui/pos/pending", tags=["UI"])
+async def ui_pending_order(
+    request: Request, 
+    product_id: int = Form(...), 
+    order_quantity: int = Form(...), 
+    db: Session = Depends(get_db)
+):
+    """Guarda un pedido sin stock como pendiente"""
+    order_service = OrderService(db)
+    result = order_service.create_pending_order(product_id, order_quantity)
+    return templates.TemplateResponse("order_pending_result.html", {"request": request, "result": result})
+
+@app.get("/ui/inventory/pending/{order_id}/details", tags=["UI"])
+async def ui_pending_order_details(
+    request: Request, 
+    order_id: int, 
+    db: Session = Depends(get_db)
+):
+    from app.models.order_ticket import OrderTicket
+    order = db.query(OrderTicket).filter(OrderTicket.id == order_id).first()
+    if not order:
+        raise DomainException("Pedido pendiente no encontrado")
+        
+    order_service = OrderService(db)
+    analysis = order_service.analyze_order_requirements(order.product_id, order.order_quantity)
+    return templates.TemplateResponse("inventory_pending_modal.html", {"request": request, "order": order, "analysis": analysis})
+
+@app.post("/ui/inventory/pending/{order_id}/approve", tags=["UI"])
+async def ui_approve_pending_order(
+    request: Request, 
+    order_id: int, 
+    db: Session = Depends(get_db)
+):
+    from app.models.order_ticket import OrderTicket
+    order_service = OrderService(db)
+    inventory_service = InventoryService(db)
+    
+    order = db.query(OrderTicket).filter(OrderTicket.id == order_id).first()
+    if not order:
+        raise DomainException("Pedido pendiente no encontrado")
+        
+    # Calculamos cuanto falta HOY y forzamos la entrada
+    analysis = order_service.analyze_order_requirements(order.product_id, order.order_quantity)
+    for req in analysis["ingredients_requirements"]:
+        if not req["is_available"]:
+            missing = req["missing_in_inventory_unit"]
+            inventory_service.adjust_stock(
+                ingredient_id=req["ingredient_id"],
+                tipo="entrada_compra",
+                cantidad=missing,
+                motivo=f"Auto-compra para Pedido #{order_id}"
+            )
+            
+    # Ahora que lo forzamos a existir, confirmamos
+    order_service.approve_pending_order(order_id)
+    
+    response = HTMLResponse("<script>window.location.reload();</script>")
+    response.headers["HX-Refresh"] = "true"
+    return response
 
 @app.get("/ui/kitchen", tags=["UI"])
 async def render_kitchen(request: Request, db: Session = Depends(get_db)):
@@ -87,6 +173,21 @@ async def mark_order_delivered(request: Request, order_id: int, db: Session = De
     order_service.mark_order_delivered(order_id)
     order = order_service.get_kitchen_order(order_id)
     return templates.TemplateResponse("kitchen_order_row.html", {"request": request, "order": order})
+
+@app.get("/ui/kitchen/history", tags=["UI"])
+async def render_kitchen_history(
+    request: Request, 
+    page: int = Query(default=1), 
+    db: Session = Depends(get_db)
+):
+    """Endpoint llamado por HTMX para paginar el historial de pedidos entregados."""
+    order_service = OrderService(db)
+    history_data = order_service.get_kitchen_history(page=page)
+    
+    return templates.TemplateResponse(
+        "kitchen_history.html", 
+        {"request": request, "history": history_data}
+    )
 
 @app.post("/ui/inventory/{ingredient_id}/adjust", tags=["UI"])
 async def adjust_inventory(
@@ -119,7 +220,10 @@ async def adjust_inventory(
 async def render_audit(
     request: Request,
     ingredient_id: str | None = Query(default=None),
-    movement_type: str = None,
+    movement_type: str | None = Query(default=None),
+    fecha: str | None = Query(default=None),
+    page: int = Query(default=1),
+    per_page: int = Query(default=5),
     db: Session = Depends(get_db)
 ):
     """Vista de auditoría y trazabilidad de movimientos de stock."""
@@ -133,9 +237,11 @@ async def render_audit(
             raise DomainException("El ingrediente seleccionado no es válido")
     
     # Obtener movimientos con filtros
-    movements = inventory_service.get_movements_with_details(
+    history_data = inventory_service.get_movements_with_details(
         ingredient_id=ingredient_filter,
-        movement_type=movement_type or None
+        movement_type=movement_type or None,
+        fecha=fecha or None,
+        page=page
     )
     
     # Obtener resumen estadístico
@@ -153,15 +259,25 @@ async def render_audit(
 
     context = {
         "request": request,
-        "movements": movements,
+        "history": history_data,
         "summary": summary,
         "ingredients": ingredients,
         "movement_types": movement_types,
         "selected_ingredient_id": ingredient_filter,
         "selected_movement_type": movement_type or None,
+        "selected_fecha": fecha or "",
     }
 
     if request.headers.get("HX-Request") == "true":
         return templates.TemplateResponse("audit_panel.html", context)
 
     return templates.TemplateResponse("audit.html", context)
+
+def format_datetime_local(dt: datetime, fmt="%Y-%m-%d %H:%M:%S", tz_name="America/Santiago"):
+    if dt is None:
+        return ""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    local_dt = dt.astimezone(ZoneInfo(tz_name))
+    return local_dt.strftime(fmt)
+templates.env.filters["local_time"] = format_datetime_local

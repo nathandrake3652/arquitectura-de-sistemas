@@ -14,6 +14,6 @@ class StockMovement(Base):
     cantidad: Mapped[float] = mapped_column(Float, nullable=False)
     tipo: Mapped[str] = mapped_column(String(50), nullable=False)
     motivo: Mapped[str] = mapped_column(String(255), nullable=False)
-    fecha: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now(timezone.utc))
+    fecha: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     ingredient = relationship("Ingredient")

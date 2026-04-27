@@ -10,7 +10,8 @@
     <div class="bg-white p-6 rounded-lg shadow">
         {% if products %}
         <form
-            hx-post="/api/v1/orders/check"
+            """hx-post="/api/v1/orders/check""""
+            hx-post="/ui/pos/check"
             hx-target="#order-check-result"
             hx-swap="innerHTML"
             class="grid gap-4 md:grid-cols-3 items-end"
