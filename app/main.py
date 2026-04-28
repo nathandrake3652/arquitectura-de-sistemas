@@ -21,6 +21,7 @@ from app.schemas.product import ProductCreate
 from app.schemas.recipe_item import RecipeItemCreate
 from app.db.base import init_db
 from app.db.session import get_db
+from app.db.seed import populate_seed_data
 from app.services.inventory_service import InventoryService
 from app.services.order_service import OrderService
 
@@ -28,6 +29,7 @@ from app.services.order_service import OrderService
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    populate_seed_data()
     yield
 
 
