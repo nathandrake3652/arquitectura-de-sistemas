@@ -11,7 +11,7 @@ from app.crud.product import (
 from app.db.session import get_db
 from app.schemas.product import ProductCreate, ProductRead
 
-router = APIRouter()
+router = APIRouter(tags=["Gestión de Catalogo de Productos"])
 
 
 @router.get("", response_model=list[ProductRead])

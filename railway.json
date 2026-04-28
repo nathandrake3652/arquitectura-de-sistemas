@@ -1,0 +1,15 @@
+{
+  "services": {
+    "arquitectura-de-sistemas-api": {
+      "builder": "dockerfile",
+      "dockerfile": "./Dockerfile",
+      "buildContext": ".",
+      "start": "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    }
+  },
+  "databases": {
+    "postgresql": {
+      "image": "postgres:16"
+    }
+  }
+}

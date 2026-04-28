@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-lg shadow mb-8">
+    <h1 class="text-3xl font-bold mb-4 text-gray-800">Bienvenido al Sistema</h1>
+    <p class="text-gray-600">
+        Gestión general de ingredientes y productos.
+    </p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <!-- Panel Ingredientes -->
+    <div class="bg-white p-6 rounded-lg shadow">
+        <h2 class="text-2xl font-bold mb-4 text-gray-800 border-b pb-2">Catálogo de Ingredientes</h2>
+        
+        <form hx-post="/ui/ingredient/add" hx-swap="none" class="mb-6 bg-gray-50 p-4 rounded border">
+            <h3 class="font-semibold mb-2">Nuevo Ingrediente</h3>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Nombre</label>
+                    <input type="text" name="name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 py-1 px-2 border">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Unidad</label>
+                    <select name="unit_id" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 py-1 px-2 border">
+                        {% for unit in units %}
+                        <option value="{{ unit.id }}">{{ unit.name }} ({{ unit.abbreviation }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Stock Inicial Físico</label>
+                    <input type="number" step="0.01" name="stock_fisico" value="0" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 py-1 px-2 border">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Stock Mínimo</label>
+                    <input type="number" step="0.01" name="stock_minimo" value="0" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 py-1 px-2 border">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Precio</label>
+                    <input type="number" name="price" value="0" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 py-1 px-2 border">
+                </div>
+            </div>
+            <button type="submit" class="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700 text-sm font-medium">Agregar Ingrediente</button>
+        </form>
+
+        <div class="overflow-y-auto max-h-96">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left font-medium text-gray-500">Nombre</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-500">Unidad</th>
+                        <th class="px-4 py-2 text-right font-medium text-gray-500">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for ing in ingredients %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 text-gray-900 font-medium">{{ ing.name }}</td>
+                        <td class="px-4 py-2 text-gray-500">{{ ing.unit.abbreviation if ing.unit else '' }}</td>
+                        <td class="px-4 py-2 text-right">
+                            <button hx-post="/ui/ingredient/{{ ing.id }}/delete" hx-swap="none" hx-confirm="¿Seguro que deseas eliminar {{ ing.name }}?" class="text-red-600 hover:text-red-900 font-semibold">Eliminar</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Panel Productos -->
+    <div class="bg-white p-6 rounded-lg shadow">
+        <h2 class="text-2xl font-bold mb-4 text-gray-800 border-b pb-2">Catálogo de Productos</h2>
+        
+        <form hx-post="/ui/product/add" hx-swap="none" class="mb-6 bg-gray-50 p-4 rounded border">
+            <h3 class="font-semibold mb-2">Nuevo Producto</h3>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Nombre</label>
+                    <input type="text" name="name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 py-1 px-2 border">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Precio Venta</label>
+                    <input type="number" name="price" value="0" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 py-1 px-2 border">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">Descripción (Opcional)</label>
+                    <input type="text" name="description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 py-1 px-2 border">
+                </div>
+                
+                <div class="col-span-2 mt-4">
+                    <div class="flex justify-between items-center bg-gray-200 p-2 rounded-t border-b">
+                        <label class="block text-sm font-bold text-gray-700">Receta del Producto</label>
+                        <button type="button" onclick="addRecipeRow()" class="bg-gray-600 hover:bg-gray-700 text-white px-2 py-1 rounded text-xs font-semibold">+ Agregar Ingrediente</button>
+                    </div>
+                    <div id="recipe-container" class="bg-white p-2 border rounded-b" style="max-height: 200px; overflow-y:auto;">
+                        <!-- Rows will be injected here -->
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700 text-sm font-medium">Agregar Producto</button>
+        </form>
+
+        <div class="overflow-y-auto max-h-96">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2 text-left font-medium text-gray-500">Nombre</th>
+                        <th class="px-4 py-2 text-left font-medium text-gray-500">Precio</th>
+                        <th class="px-4 py-2 text-right font-medium text-gray-500">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for prod in products %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 text-gray-900 font-medium">{{ prod.name }}</td>
+                        <td class="px-4 py-2 text-gray-500">${{ prod.price }}</td>
+                        <td class="px-4 py-2 text-right">
+                            <button hx-post="/ui/product/{{ prod.id }}/delete" hx-swap="none" hx-confirm="¿Seguro que deseas eliminar {{ prod.name }}?" class="text-red-600 hover:text-red-900 font-semibold">Eliminar</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    function addRecipeRow() {
+        const container = document.getElementById('recipe-container');
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-12 gap-2 mb-2 items-center';
+        
+        row.innerHTML = `
+            <div class="col-span-5">
+                <select name="ingredient_id" required class="block w-full text-sm rounded-md border-gray-300 py-1 px-2 border">
+                    <option value="">-- Ingrediente --</option>
+                    {% for ing in ingredients %}
+                    <option value="{{ ing.id }}">{{ ing.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-span-3">
+                <select name="unit_id" required class="block w-full text-sm rounded-md border-gray-300 py-1 px-2 border">
+                    <option value="">-- Un. --</option>
+                    {% for unit in units %}
+                    <option value="{{ unit.id }}">{{ unit.abbreviation }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-span-3">
+                <input type="number" step="0.01" name="quantity" required placeholder="Cant." class="block w-full text-sm rounded-md border-gray-300 py-1 px-2 border">
+            </div>
+            <div class="col-span-1 text-right">
+                <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-500 font-bold hover:text-red-700">X</button>
+            </div>
+        `;
+        container.appendChild(row);
+    }
+</script>
+{% endblock %}

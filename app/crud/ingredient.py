@@ -19,6 +19,7 @@ def create_ingredient(db: Session, payload: IngredientCreate) -> Ingredient:
             stock_fisico=payload.stock_fisico,
             stock_reservado=payload.stock_reservado,
             stock_minimo=payload.stock_minimo,
+            price=payload.price,
         )
         db.add(ingredient)
         db.commit()
@@ -53,3 +54,14 @@ def update_ingredient_stock(db: Session, ingredient_id: int, stock_fisico: float
     db.commit()
     db.refresh(ingredient)
     return ingredient
+
+
+def delete_ingredient(db: Session, ingredient_id: int) -> bool:
+    ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
+    if not ingredient:
+        raise ValueError(f"Ingredient with id {ingredient_id} does not exist")
+    
+    db.delete(ingredient)
+    db.commit()
+    return True
+

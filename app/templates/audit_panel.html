@@ -1,0 +1,90 @@
+<div id="audit-panel">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">📋 Auditoría y Trazabilidad</h1>
+        <p class="text-gray-600">Historial completo de movimientos de inventario</p>
+    </div>
+
+    <!-- Resumen Estadístico -->
+    <div class="grid grid-cols-3 gap-4 mb-6">
+        <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded">
+            <p class="text-sm font-medium text-gray-600">Entradas de Compra</p>
+            <p class="text-2xl font-bold text-green-600">{{ summary.entrada_compra.count }}</p>
+            <p class="text-xs text-gray-500">Valor Total: ${{ "%.0f"|format(summary.entrada_compra.total) }}</p>
+        </div>
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+            <p class="text-sm font-medium text-gray-600">Salidas por Merma</p>
+            <p class="text-2xl font-bold text-red-600">{{ summary.salida_merma.count }}</p>
+            <p class="text-xs text-gray-500">Pérdida Total: ${{ "%.0f"|format(summary.salida_merma.total) }}</p>
+        </div>
+        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+            <p class="text-sm font-medium text-gray-600">Salidas por Producción</p>
+            <p class="text-2xl font-bold text-yellow-600">{{ summary.salida_produccion.count }}</p>
+            <p class="text-xs text-gray-500">Ingreso Generado: ${{ "%.0f"|format(summary.salida_produccion.total) }}</p>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">🔍 Filtros</h2>
+        <form
+            id="audit-form"
+            hx-get="/ui/audit"
+            hx-target="#audit-panel"
+            hx-swap="outerHTML"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+        >
+            <div>
+                <label for="ingredient_id" class="block text-sm font-medium text-gray-700 mb-1">Ingrediente</label>
+                <select
+                    name="ingredient_id"
+                    id="ingredient_id"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    onchange="this.form.requestSubmit()"
+                >
+                    <option value="">-- Todos los ingredientes --</option>
+                    {% for ingredient in ingredients %}
+                        <option value="{{ ingredient.id }}" {% if selected_ingredient_id == ingredient.id %}selected{% endif %}>
+                            {{ ingredient.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="movement_type" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Movimiento</label>
+                <select
+                    name="movement_type"
+                    id="movement_type"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    onchange="this.form.requestSubmit()"
+                >
+                    <option value="">-- Todos los tipos --</option>
+                    {% for type_option in movement_types %}
+                        <option value="{{ type_option.value }}" {% if selected_movement_type == type_option.value %}selected{% endif %}>
+                            {{ type_option.label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="fecha" class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                <input
+                    type="date"
+                    name="fecha"
+                    id="fecha"
+                    value="{{ selected_fecha }}"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    onchange="this.form.requestSubmit()"
+                >
+            </div>
+
+            <div class="flex items-end">
+                <button type="button" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition" onclick="location.href='/ui/audit'">
+                    🔄 Limpiar Filtros
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% include "audit_results.html" %}
+</div>
