@@ -12,8 +12,13 @@ from fastapi.responses import JSONResponse, HTMLResponse
 
 from app.api.v1.router import api_router
 from app.core.config import settings
-from app.crud.ingredient import get_ingredient, get_ingredients
-from app.crud.product import get_products
+from app.crud.ingredient import get_ingredient, get_ingredients, create_ingredient, delete_ingredient
+from app.crud.product import get_products, create_product, delete_product
+from app.crud.recipe_item import create_recipe_item
+from app.models.unit import Unit
+from app.schemas.ingredient import IngredientCreate
+from app.schemas.product import ProductCreate
+from app.schemas.recipe_item import RecipeItemCreate
 from app.db.base import init_db
 from app.db.session import get_db
 from app.services.inventory_service import InventoryService
@@ -52,8 +57,81 @@ def health_check():
     return {"status": "ok", "environment": settings.app_env}
 
 @app.get("/", tags=["UI"])
-async def read_root(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+async def read_root(request: Request, db: Session = Depends(get_db)):
+    ingredients = get_ingredients(db)
+    products = get_products(db)
+    units = db.query(Unit).all()
+    return templates.TemplateResponse(request, "index.html", {"ingredients": ingredients, "products": products, "units": units})
+
+@app.post("/ui/ingredient/add", tags=["UI"])
+async def ui_add_ingredient(
+    request: Request,
+    name: str = Form(...),
+    unit_id: int = Form(...),
+    stock_fisico: float = Form(default=0.0),
+    stock_minimo: float = Form(default=0.0),
+    price: int = Form(default=0),
+    db: Session = Depends(get_db)
+):
+    try:
+        payload = IngredientCreate(name=name, unit_id=unit_id, stock_fisico=stock_fisico, stock_minimo=stock_minimo, price=price)
+        create_ingredient(db, payload)
+    except ValueError as e:
+        pass
+    return Response(status_code=200, headers={"HX-Redirect": "/"})
+
+@app.post("/ui/ingredient/{id}/delete", tags=["UI"])
+async def ui_delete_ingredient(
+    request: Request,
+    id: int,
+    db: Session = Depends(get_db)
+):
+    try:
+        delete_ingredient(db, id)
+    except Exception:
+        pass
+    return Response(status_code=200, headers={"HX-Redirect": "/"})
+
+@app.post("/ui/product/add", tags=["UI"])
+async def ui_add_product(
+    request: Request,
+    name: str = Form(...),
+    description: str = Form(default=""),
+    price: int = Form(...),
+    ingredient_id: list[int] = Form(default=[]),
+    unit_id: list[int] = Form(default=[]),
+    quantity: list[float] = Form(default=[]),
+    db: Session = Depends(get_db)
+):
+    try:
+        payload = ProductCreate(name=name, description=description, price=price)
+        product = create_product(db, payload)
+        
+        # Save recipe items if they and their sizes align
+        for ing_id, u_id, qty in zip(ingredient_id, unit_id, quantity):
+            if qty > 0:
+                recipe_payload = RecipeItemCreate(
+                    product_id=product.id,
+                    ingredient_id=ing_id,
+                    unit_id=u_id,
+                    quantity=qty
+                )
+                create_recipe_item(db, recipe_payload)
+    except ValueError:
+        pass
+    return Response(status_code=200, headers={"HX-Redirect": "/"})
+
+@app.post("/ui/product/{id}/delete", tags=["UI"])
+async def ui_delete_product(
+    request: Request,
+    id: int,
+    db: Session = Depends(get_db)
+):
+    try:
+        delete_product(db, id)
+    except Exception:
+        pass
+    return Response(status_code=200, headers={"HX-Redirect": "/"})
 
 @app.get("/ui/inventory", tags=["UI"])
 async def render_inventory(request: Request, db: Session = Depends(get_db)):

@@ -8,6 +8,7 @@ class IngredientBase(BaseModel):
     stock_fisico: float = Field(default=0.0, ge=0)
     stock_reservado: float = Field(default=0.0, ge=0)
     stock_minimo: float = Field(default=0.0, ge=0)
+    price: int = Field(default=0, ge=0)
 
 
 class IngredientCreate(IngredientBase):
