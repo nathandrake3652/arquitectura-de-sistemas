@@ -6,7 +6,7 @@ from app.crud.user import create_user, get_users
 from app.db.session import get_db
 from app.schemas.user import UserCreate, UserRead
 
-router = APIRouter()
+router = APIRouter(tags=["Gestión de Usuarios"])
 
 
 @router.get("", response_model=list[UserRead])

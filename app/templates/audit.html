@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% include "audit_panel.html" %}
+
+<!-- Información Útil -->
+<div class="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+    <p class="text-sm text-blue-800">
+        <strong>💡 Nota:</strong> Esta vista muestra un historial completo y auditable de todos los movimientos de inventario. 
+        Puedes filtrar por ingrediente o tipo de movimiento para analizar transacciones específicas.
+    </p>
+</div>
+
+{% endblock %}

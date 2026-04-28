@@ -1,4 +1,4 @@
-from sqlalchemy import String, ForeignKey, Float
+from sqlalchemy import Integer, String, ForeignKey, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -12,6 +12,7 @@ class Ingredient(Base):
     stock_fisico: Mapped[float] = mapped_column(Float, default=0.0)
     stock_reservado: Mapped[float] = mapped_column(Float, default=0.0)
     stock_minimo: Mapped[float] = mapped_column(Float, default=0.0)
+    price: Mapped[int] = mapped_column(Integer, default=0)
 
     unit: Mapped["Unit"] = relationship()
 

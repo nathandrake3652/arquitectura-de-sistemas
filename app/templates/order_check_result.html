@@ -1,0 +1,64 @@
+<div class="bg-white p-6 rounded-lg shadow space-y-4">
+    <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold text-gray-800">Resultado de Verificacion</h2>
+        {% if result.can_be_fulfilled %}
+        <span class="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">Stock disponible</span>
+        {% else %}
+        <span class="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Stock insuficiente</span>
+        {% endif %}
+    </div>
+
+    <p class="text-sm text-gray-600">
+        Producto: <strong>{{ result.product_name }}</strong> | Cantidad solicitada: <strong>{{ result.order_quantity }}</strong>
+    </p>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm border border-gray-200 rounded-md overflow-hidden">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-3 py-2 text-left">Ingrediente</th>
+                    <th class="px-3 py-2 text-left">Necesario</th>
+                    <th class="px-3 py-2 text-left">Disponible</th>
+                    <th class="px-3 py-2 text-left">Faltante</th>
+                    <th class="px-3 py-2 text-left">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in result.ingredients_requirements %}
+                <tr class="border-t border-gray-200">
+                    <td class="px-3 py-2">{{ req.ingredient_name }}</td>
+                    <td class="px-3 py-2">{{ req.required_in_inventory_unit }} {{ req.inventory_unit }}</td>
+                    <td class="px-3 py-2">{{ req.available_in_inventory_unit }} {{ req.inventory_unit }}</td>
+                    <td class="px-3 py-2">{{ req.missing_in_inventory_unit }} {{ req.inventory_unit }}</td>
+                    <td class="px-3 py-2">
+                        {% if req.is_available %}
+                        <span class="text-green-700 font-medium">Disponible</span>
+                        {% else %}
+                        <span class="text-red-700 font-medium">No disponible</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if result.can_be_fulfilled %}
+    <form hx-post="/ui/pos/confirm" hx-target="#order-check-result" hx-swap="innerHTML" class="pt-2">
+        <input type="hidden" name="product_id" value="{{ result.product_id }}">
+        <input type="hidden" name="order_quantity" value="{{ result.order_quantity }}">
+        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium">
+            Confirmar Pedido
+        </button>
+    </form>
+    {% else %}
+    <form hx-post="/ui/pos/pending" hx-target="#order-check-result" hx-swap="innerHTML" class="pt-2 flex items-center space-x-4">
+        <p class="text-sm font-medium text-amber-600">No hay stock suficiente.</p>
+        <input type="hidden" name="product_id" value="{{ result.product_id }}">
+        <input type="hidden" name="order_quantity" value="{{ result.order_quantity }}">
+        <button type="submit" class="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600 font-medium transition">
+            Guardar en Espera
+        </button>
+    </form>
+    {% endif %}
+</div>
